@@ -281,6 +281,7 @@ def get_parser(desc, default_task="translation"):
 
     # Task definitions can be found under fairseq/tasks/
     from fairseq.tasks import TASK_REGISTRY
+    print(TASK_REGISTRY.keys())
     parser.add_argument('--task', metavar='TASK', default=default_task,
                         choices=TASK_REGISTRY.keys(),
                         help='task')
