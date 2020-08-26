@@ -381,6 +381,7 @@ def resolve_max_positions(*args):
                 max_positions = map_value_update(max_positions, arg)
             else:
                 max_positions = tuple(map(nullsafe_min, zip(max_positions, arg)))
+                if max_positions[0] == max_positions[1]: max_positions = max_positions[0]
 
     return max_positions
 

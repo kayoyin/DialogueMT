@@ -8,7 +8,7 @@ from .dictionary import Dictionary, TruncatedDictionary
 from .fairseq_dataset import FairseqDataset, FairseqIterableDataset
 
 from .base_wrapper_dataset import BaseWrapperDataset
-
+from .collaters import Seq2SeqCollater
 from .add_target_dataset import AddTargetDataset
 from .append_token_dataset import AppendTokenDataset
 from .audio.raw_audio_dataset import FileAudioDataset

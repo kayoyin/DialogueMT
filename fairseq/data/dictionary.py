@@ -25,6 +25,9 @@ class Dictionary(object):
         pad="<pad>",
         eos="</s>",
         unk="<unk>",
+        brk="<brk>",
+        a="<a>",
+        b="<b>",
         extra_special_symbols=None,
     ):
         self.unk_word, self.pad_word, self.eos_word = unk, pad, eos
@@ -35,6 +38,9 @@ class Dictionary(object):
         self.pad_index = self.add_symbol(pad)
         self.eos_index = self.add_symbol(eos)
         self.unk_index = self.add_symbol(unk)
+        self.brk_index = self.add_symbol(brk)
+        self.a_index = self.add_symbol(a)
+        self.b_index = self.add_symbol(b)
         if extra_special_symbols:
             for s in extra_special_symbols:
                 self.add_symbol(s)
@@ -199,6 +205,10 @@ class Dictionary(object):
     def unk(self):
         """Helper to get index of unk symbol"""
         return self.unk_index
+
+    def brk(self):
+        """Helper to get index of break symbol"""
+        return self.brk_index
 
     @classmethod
     def load(cls, f):

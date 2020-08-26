@@ -151,7 +151,7 @@ class DialogueTranslationTask(FairseqTask):
 
     def max_positions(self):
         """Return the max input length allowed by the task."""
-        return (self.args.src_max_positions, self.args.tgt_max_positions)
+        return (self.args.max_tokens, self.args.max_tokens)
 
     @property
     def source_dictionary(self):

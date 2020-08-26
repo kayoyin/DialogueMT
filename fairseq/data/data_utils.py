@@ -152,6 +152,7 @@ def _filter_by_size_dynamic(indices, size_fn, max_positions, raise_exception=Fal
             )
         else:
             # Hacky as heck, for the specific case of multilingual training with RoundRobin.
+            print(size_fn)
             if isinstance(size_fn(idx), dict) and isinstance(max_positions, tuple):
                 return all(
                     a is None or b is None or compare_leq(a, b)

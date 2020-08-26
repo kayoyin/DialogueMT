@@ -206,6 +206,7 @@ class FairseqTask(object):
 
         # filter examples that are too large
         if max_positions is not None:
+            print(max_positions)
             indices = self.filter_indices_by_size(
                 indices, dataset, max_positions, ignore_invalid_inputs
             )
