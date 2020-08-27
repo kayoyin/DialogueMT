@@ -1,11 +1,11 @@
 import os
 import torch
 import logging
-
-import numpy as np
 from tqdm import tqdm
+import numpy as np
+
 from fairseq import metrics, options, utils
-from fairseq.data import Dictionary, TwoToOneDataset
+from fairseq.data import Dictionary, TwoToTwoDataset
 from fairseq.tasks import FairseqTask, register_task
 
 EVAL_BLEU_ORDER = 4
@@ -14,8 +14,8 @@ EVAL_BLEU_ORDER = 4
 logger = logging.getLogger(__name__)
 
 
-@register_task('two_to_one')
-class TwoToOneTask(FairseqTask):
+@register_task('two_to_two')
+class TwoToTwoTask(FairseqTask):
     @staticmethod
     def add_args(parser):
         # Add some command-line arguments for specifying where the data is
@@ -77,7 +77,7 @@ class TwoToOneTask(FairseqTask):
 
         path = os.path.join(self.args.data, '{}.json'.format(split))
 
-        self.datasets[split] = TwoToOneDataset(path, self.vocab)
+        self.datasets[split] = TwoToTwoDataset(path, self.vocab)
 
     def build_model(self, args):
         model = super().build_model(args)
@@ -199,35 +199,52 @@ class TwoToOneTask(FairseqTask):
         else:
             logger.info(sacrebleu.corpus_bleu(hyps, [refs]))
             return hyps, refs
-
-
+    
     def eval_with_bleu(self, model, dataloader):
         import sacrebleu
-        def decode(task, toks, escape_unk=False):
-            s = task.vocab.string(
+        def decode(toks, escape_unk=False):
+            s = self.vocab.string(
                 toks.int().cpu(),
-                task.args.eval_bleu_remove_bpe,
+                self.args.eval_bleu_remove_bpe,
                 unk_string=(
                     "UNKNOWNTOKENINREF" if escape_unk else "UNKNOWNTOKENINHYP"
                 ),
             )
             return s
 
+        def get_after_break(tokens):
+            brk_tok = self.vocab.brk()
+            for i in range(tokens.size()[0]):
+                if tokens[i] == brk_tok:
+                    break
+            if i >= tokens.size()[0]:
+                return tokens
+            return torch.narrow(tokens, 0, i+1, tokens.size()[0]-i-1)
+
         hyps = []
         refs = []
+        j = 0
         for batch in tqdm(dataloader):
             preds = model(**batch['net_input'])
-            # print(preds[0][0].shape)
-            # print(decode(task,torch.argmax(preds[0][0], dim=1)))
-            # print(decode(task,
-            #             utils.strip_pad(batch['target'][0], task.vocab.pad()),
-            #             escape_unk=True,  # don't count <unk> as matches to the hypo
-            #         ))
             for i in range(preds[0].shape[0]):
-                hyps.append(decode(task,torch.argmax(preds[0][i], dim=1)))
-                refs.append(decode(task,
-                    utils.strip_pad(batch['target'][i], task.vocab.pad()),
-                    escape_unk=True,  # don't count <unk> as matches to the hypo
-                ))
+                pred = torch.argmax(preds[0][i], dim=1)
 
+                #if self.datasets['valid'].ids[i+j] > 0:
+                if True:
+                    hyps.append(decode(get_after_break(pred)))
+                    refs.append(decode(utils.strip_pad(get_after_break(batch['target'][i]), self.vocab.pad()),
+                        escape_unk=True,  # don't count <unk> as matches to the hypo
+                    ))
+                else:
+                    hyps.append(decode(pred))
+                    refs.append(decode(utils.strip_pad(batch['target'][i], self.vocab.pad()),
+                        escape_unk=True,  # don't count <unk> as matches to the hypo
+                    ))
+                j += i
         return sacrebleu.corpus_bleu(hyps, [refs]), hyps
+
+
+
+        
+
+    

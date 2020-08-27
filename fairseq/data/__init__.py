@@ -44,9 +44,11 @@ from .round_robin_zip_datasets import RoundRobinZipDatasets
 from .sort_dataset import SortDataset
 from .strip_token_dataset import StripTokenDataset
 from .subsample_dataset import SubsampleDataset
+from .tagged_dataset import TaggedDataset
 from .token_block_dataset import TokenBlockDataset
 from .transform_eos_dataset import TransformEosDataset
 from .transform_eos_lang_pair_dataset import TransformEosLangPairDataset
+from .two_to_two_dataset import TwoToTwoDataset
 from .shorten_dataset import TruncateDataset, RandomCropDataset
 from .multilingual.sampled_multi_dataset import SampledMultiDataset
 from .multilingual.sampled_multi_epoch_dataset import SampledMultiEpochDataset

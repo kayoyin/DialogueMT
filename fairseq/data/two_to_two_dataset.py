@@ -10,7 +10,7 @@ from .collaters import Seq2SeqCollater
 
 tag_dict = {"customer": "<a>", "agent": "<b>"}
 
-class TwoToOneDataset(IndexedRawTextDataset):
+class TwoToTwoDataset(IndexedRawTextDataset):
     def __init__(self, path, dictionary, append_eos=True, reverse_order=False):
         self.src_tokens = []
         self.src_sizes = []
@@ -65,7 +65,7 @@ class TwoToOneDataset(IndexedRawTextDataset):
             cxt_speaker = self.dictionary.encode_line(tag_dict[self.speakers[idx - 1]], append_eos=False)
             src_speaker = self.dictionary.encode_line(tag_dict[self.speakers[idx]], append_eos=False)
             source = torch.cat((cxt_speaker.long(), self.src_tokens[idx - 1].long(), torch.Tensor([self.dictionary.brk()]).long(), src_speaker.long(), self.src_tokens[idx].long()))
-            target = self.tgt_tokens[idx]
+            target = torch.cat((self.tgt_tokens[idx-1].long(), torch.Tensor([self.dictionary.brk()]).long(), self.tgt_tokens[idx].long()))
         else:
             src_speaker = self.dictionary.encode_line(tag_dict[self.speakers[idx]], append_eos=False)
             source, target =  torch.cat((src_speaker.long(), self.src_tokens[idx].long())) , self.tgt_tokens[idx]

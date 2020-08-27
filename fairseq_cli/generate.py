@@ -174,8 +174,8 @@ def _main(args, output_file):
 
             # Either retrieve the original sentences or regenerate them from tokens.
             if align_dict is not None:
-                src_str = task.dataset(args.gen_subset).src.get_original_text(sample_id)
-                target_str = task.dataset(args.gen_subset).tgt.get_original_text(sample_id)
+                src_str = task.dataset(args.gen_subset).src[sample_id]
+                target_str = task.dataset(args.gen_subset).tgt[sample_id]
             else:
                 if src_dict is not None:
                     src_str = src_dict.string(src_tokens, args.remove_bpe)

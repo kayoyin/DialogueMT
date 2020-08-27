@@ -10,7 +10,7 @@ from .collaters import Seq2SeqCollater
 
 tag_dict = {"customer": "<a>", "agent": "<b>"}
 
-class TwoToOneDataset(IndexedRawTextDataset):
+class TaggedDataset(IndexedRawTextDataset):
     def __init__(self, path, dictionary, append_eos=True, reverse_order=False):
         self.src_tokens = []
         self.src_sizes = []
@@ -61,14 +61,8 @@ class TwoToOneDataset(IndexedRawTextDataset):
         self.sizes = self.src_sizes
 
     def __getitem__(self, idx):
-        if self.ids[idx] > 0:
-            cxt_speaker = self.dictionary.encode_line(tag_dict[self.speakers[idx - 1]], append_eos=False)
-            src_speaker = self.dictionary.encode_line(tag_dict[self.speakers[idx]], append_eos=False)
-            source = torch.cat((cxt_speaker.long(), self.src_tokens[idx - 1].long(), torch.Tensor([self.dictionary.brk()]).long(), src_speaker.long(), self.src_tokens[idx].long()))
-            target = self.tgt_tokens[idx]
-        else:
-            src_speaker = self.dictionary.encode_line(tag_dict[self.speakers[idx]], append_eos=False)
-            source, target =  torch.cat((src_speaker.long(), self.src_tokens[idx].long())) , self.tgt_tokens[idx]
+        src_speaker = self.dictionary.encode_line(tag_dict[self.speakers[idx]], append_eos=False)
+        source, target =  torch.cat((src_speaker.long(), self.src_tokens[idx].long())) , self.tgt_tokens[idx]
         return {"id": idx, "source": source, "target": target}
 
     def collater(self, samples):
