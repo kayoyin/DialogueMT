@@ -7,7 +7,7 @@ from tqdm import tqdm
 from fairseq import metrics, options, utils
 from fairseq.data import Dictionary, TwoToOneDataset
 from fairseq.tasks import FairseqTask, register_task
-
+import sentencepiece as spm
 EVAL_BLEU_ORDER = 4
 
 
@@ -64,7 +64,8 @@ class TwoToOneTask(FairseqTask):
 
         # load dictionaries
         vocab = cls.load_dictionary(os.path.join(args.data, 'dict.txt'))
-        logger.info('[{}] dictionary: {} types'.format('Src + tgt', len(vocab)))
+        #logger.info('[{}] dictionary: {} types'.format('Src + tgt', len(vocab)))
+        vocab.model = spm.SentencePieceProcessor(model_file=os.path.join(args.data, 'spm.model'))
 
         return cls(args, vocab)
 
@@ -203,20 +204,28 @@ class TwoToOneTask(FairseqTask):
 
     def eval_with_bleu(self, model, dataloader):
         import sacrebleu
+        
         def decode(task, toks, escape_unk=False):
-            s = task.vocab.string(
-                toks.int().cpu(),
-                task.args.eval_bleu_remove_bpe,
-                unk_string=(
-                    "UNKNOWNTOKENINREF" if escape_unk else "UNKNOWNTOKENINHYP"
-                ),
-            )
-            return s
+            toks = toks.tolist()
+            #bos = task.vocab.encode("<s>")
+            #eos = task.vocab.encode("</s>")
+            bos = task.vocab.model.bos_id()
+            eos = task.vocab.model.eos_id()
+            while bos in toks:
+                toks.remove(bos)
+            while eos in toks:
+                toks.remove(eos)
+            s = task.vocab.decode(
+                toks)
+            return s.strip()
 
         hyps = []
         refs = []
+        preds = torch.Tensor([self.vocab.model.bos_id()])
         for batch in tqdm(dataloader):
-            preds = model(**batch['net_input'])
+            mask_batch = batch
+            mask_batch['net_input']['prev_output_tokens'] = prev_outputs
+            preds = model(**mask_batch['net_input'])
             # print(preds[0][0].shape)
             # print(decode(task,torch.argmax(preds[0][0], dim=1)))
             # print(decode(task,
@@ -224,9 +233,9 @@ class TwoToOneTask(FairseqTask):
             #             escape_unk=True,  # don't count <unk> as matches to the hypo
             #         ))
             for i in range(preds[0].shape[0]):
-                hyps.append(decode(task,torch.argmax(preds[0][i], dim=1)))
-                refs.append(decode(task,
-                    utils.strip_pad(batch['target'][i], task.vocab.pad()),
+                hyps.append(decode(self,torch.argmax(preds[0][i], dim=1)))
+                refs.append(decode(self,
+                    utils.strip_pad(batch['target'][i], self.vocab.pad()),
                     escape_unk=True,  # don't count <unk> as matches to the hypo
                 ))
 

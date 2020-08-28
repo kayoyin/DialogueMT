@@ -67,14 +67,16 @@ class Seq2SeqCollater(object):
         id = torch.LongTensor([s["id"] for s in samples])
         source = data_utils.collate_tokens([s["source"] for s in samples], self.pad_index, eos_idx=self.eos_index)
         target = data_utils.collate_tokens([s["target"] for s in samples], self.pad_index, eos_idx=self.eos_index)
-        prev_output_tokens = None
+        
         prev_output_tokens = data_utils.collate_tokens(
                 [s["target"] for s in samples],
                 self.pad_index,
                 self.eos_index,
                 left_pad=False,
-                move_eos_to_beginning=self.move_eos_to_beginning,
+                move_eos_to_beginning=True,
             )
+        # print("tgt ",target[0])
+        # print("prev ",prev_output_tokens[0])
         batch = {
             "id": id,
             "ntokens": sum(len(s["target"]) for s in samples),

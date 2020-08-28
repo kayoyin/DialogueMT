@@ -13,6 +13,7 @@ from fairseq.binarizer import safe_readline
 from fairseq.data import data_utils
 from fairseq.file_io import PathManager
 from fairseq.tokenizer import tokenize_line
+import sentencepiece as spm
 
 
 class Dictionary(object):
@@ -45,6 +46,7 @@ class Dictionary(object):
             for s in extra_special_symbols:
                 self.add_symbol(s)
         self.nspecial = len(self.symbols)
+        self.model = None
 
     def __eq__(self, other):
         return self.indices == other.indices
@@ -67,6 +69,12 @@ class Dictionary(object):
         if sym in self.indices:
             return self.indices[sym]
         return self.unk_index
+
+    def encode(self, line):
+        return self.model.encode(line)
+
+    def decode(self, line):
+        return self.model.DecodeIds(line)
 
     def string(
         self,

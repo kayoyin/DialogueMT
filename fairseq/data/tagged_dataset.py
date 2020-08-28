@@ -3,12 +3,12 @@ import numpy as np
 
 import torch
 from torch.utils.data import Dataset, DataLoader
+from .fairseq_dataset import TAG_DICT
 
 from .import FairseqDataset
 from .indexed_dataset import IndexedRawTextDataset
 from .collaters import Seq2SeqCollater
 
-tag_dict = {"customer": "<a>", "agent": "<b>"}
 
 class TaggedDataset(IndexedRawTextDataset):
     def __init__(self, path, dictionary, append_eos=True, reverse_order=False):
@@ -61,7 +61,7 @@ class TaggedDataset(IndexedRawTextDataset):
         self.sizes = self.src_sizes
 
     def __getitem__(self, idx):
-        src_speaker = self.dictionary.encode_line(tag_dict[self.speakers[idx]], append_eos=False)
+        src_speaker = self.dictionary.encode_line(TAG_DICT[self.speakers[idx]], append_eos=False)
         source, target =  torch.cat((src_speaker.long(), self.src_tokens[idx].long())) , self.tgt_tokens[idx]
         return {"id": idx, "source": source, "target": target}
 
