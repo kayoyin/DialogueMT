@@ -13,6 +13,7 @@ from fairseq.binarizer import safe_readline
 from fairseq.data import data_utils
 from fairseq.file_io import PathManager
 from fairseq.tokenizer import tokenize_line
+import sentencepiece as spm
 
 
 class Dictionary(object):
@@ -45,6 +46,7 @@ class Dictionary(object):
             for s in extra_special_symbols:
                 self.add_symbol(s)
         self.nspecial = len(self.symbols)
+        self.model = None
 
     def __eq__(self, other):
         return self.indices == other.indices
@@ -67,6 +69,12 @@ class Dictionary(object):
         if sym in self.indices:
             return self.indices[sym]
         return self.unk_index
+
+    def encode(self, line):
+        return self.model.encode(line)
+
+    def decode(self, line):
+        return self.model.DecodeIds(line)
 
     def string(
         self,
@@ -107,7 +115,12 @@ class Dictionary(object):
             if utils.item(i) not in extra_symbols_to_ignore
         )
 
-        return data_utils.post_process(sent, bpe_symbol)
+        ret = data_utils.post_process(sent, bpe_symbol)
+
+        if self.model:
+            ret = self.model.decode_pieces(ret.split())
+
+        return ret
 
     def unk_string(self, escape=False):
         """Return unknown string, optionally escaped as: <<unk>>"""
@@ -192,22 +205,32 @@ class Dictionary(object):
 
     def bos(self):
         """Helper to get index of beginning-of-sentence symbol"""
+        if self.model:
+            return self.model.bos_id()
         return self.bos_index
 
     def pad(self):
         """Helper to get index of pad symbol"""
+        if self.model:
+            return self.model.piece_to_id("<pad>")
         return self.pad_index
 
     def eos(self):
         """Helper to get index of end-of-sentence symbol"""
+        if self.model:
+            return self.model.eos_id()
         return self.eos_index
 
     def unk(self):
         """Helper to get index of unk symbol"""
+        if self.model:
+            return self.model.piece_to_id("<unk>")
         return self.unk_index
 
     def brk(self):
         """Helper to get index of break symbol"""
+        if self.model:
+            return self.model.piece_to_id("<brk>")
         return self.brk_index
 
     @classmethod

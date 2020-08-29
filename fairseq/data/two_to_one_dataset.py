@@ -3,12 +3,12 @@ import numpy as np
 
 import torch
 from torch.utils.data import Dataset, DataLoader
-
+import sentencepiece as spm
 from .import FairseqDataset
+from .fairseq_dataset import TAG_DICT
 from .indexed_dataset import IndexedRawTextDataset
 from .collaters import Seq2SeqCollater
 
-tag_dict = {"customer": "<a>", "agent": "<b>"}
 
 class TwoToOneDataset(IndexedRawTextDataset):
     def __init__(self, path, dictionary, append_eos=True, reverse_order=False):
@@ -28,6 +28,7 @@ class TwoToOneDataset(IndexedRawTextDataset):
         self.size = len(self.ids)
         
         
+        
 
 
     def read_data(self, path):
@@ -38,19 +39,21 @@ class TwoToOneDataset(IndexedRawTextDataset):
             for turn in chat:
                 src = turn['source']
                 self.src.append(src)
-                src_tokens = self.dictionary.encode_line(
-                    src, add_if_not_exist=False,
-                    append_eos=self.append_eos, reverse_order=self.reverse_order,
-                ).long()
+                # src_tokens = self.dictionary.encode_line(
+                #     src, add_if_not_exist=False,
+                #     append_eos=self.append_eos, reverse_order=self.reverse_order,
+                # ).long()
+                src_tokens = torch.Tensor([self.dictionary.bos()] + self.dictionary.encode(src) + [self.dictionary.eos()]).long() 
                 self.src_tokens.append(src_tokens)
                 self.src_sizes.append(len(src_tokens))
 
                 tgt = turn['target']
                 self.tgt.append(tgt)
-                tgt_tokens = self.dictionary.encode_line(
-                    tgt, add_if_not_exist=False,
-                    append_eos=self.append_eos, reverse_order=self.reverse_order,
-                ).long()
+                # tgt_tokens = self.dictionary.encode_line(
+                #     tgt, add_if_not_exist=False,
+                #     append_eos=self.append_eos, reverse_order=self.reverse_order,
+                # ).long()
+                tgt_tokens = torch.Tensor([self.dictionary.bos()] + self.dictionary.encode(tgt) + [self.dictionary.eos()]).long()
                 self.tgt_tokens.append(tgt_tokens)
                 self.tgt_sizes.append(len(tgt_tokens))
 
@@ -62,16 +65,28 @@ class TwoToOneDataset(IndexedRawTextDataset):
 
     def __getitem__(self, idx):
         if self.ids[idx] > 0:
-            cxt_speaker = self.dictionary.encode_line(tag_dict[self.speakers[idx - 1]], append_eos=False)
-            src_speaker = self.dictionary.encode_line(tag_dict[self.speakers[idx]], append_eos=False)
+            cxt_speaker = torch.Tensor([self.dictionary.model.piece_to_id(TAG_DICT[self.speakers[idx - 1]])])
+            src_speaker = torch.Tensor([self.dictionary.model.piece_to_id(TAG_DICT[self.speakers[idx]])])
             source = torch.cat((cxt_speaker.long(), self.src_tokens[idx - 1].long(), torch.Tensor([self.dictionary.brk()]).long(), src_speaker.long(), self.src_tokens[idx].long()))
             target = self.tgt_tokens[idx]
         else:
-            src_speaker = self.dictionary.encode_line(tag_dict[self.speakers[idx]], append_eos=False)
+            src_speaker = torch.Tensor([self.dictionary.model.piece_to_id(TAG_DICT[self.speakers[idx]])])
             source, target =  torch.cat((src_speaker.long(), self.src_tokens[idx].long())) , self.tgt_tokens[idx]
+
+        #print("source ", self.src[idx], "\n source decoded ", self.dictionary.decode(source.tolist()))
+        #print("target ", self.tgt[idx], "\n target decoded ",self.dictionary.decode(target.tolist()))
         return {"id": idx, "source": source, "target": target}
 
     def collater(self, samples):
-        collate_fn = Seq2SeqCollater(pad_index=self.dictionary.pad(), eos_index=self.dictionary.eos())
-        return collate_fn.collate(samples)
+        collate_fn = Seq2SeqCollater(pad_index=self.dictionary.model.piece_to_id("<pad>"), eos_index=self.dictionary.model.piece_to_id("</s>"))
+        samples = collate_fn.collate(samples)
+        return samples
 
+if __name__ == "__main__":
+    model = spm.SentencePieceProcessor(model_file="../../../data/wmtchat2020/spm.model")
+    dataset = TwoToOneDataset("../../../data/wmtchat2020/valid.json", model)
+    sample = dataset[5]
+    print(dataset.src[5])
+    print(spm.decode(sample["source"]))
+    print(dataset.tgt[5])
+    print(spm.decode(sample["target"]))

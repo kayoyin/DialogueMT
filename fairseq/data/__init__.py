@@ -17,7 +17,7 @@ from .bucket_pad_length_dataset import BucketPadLengthDataset
 from .colorize_dataset import ColorizeDataset
 from .concat_dataset import ConcatDataset
 from .concat_sentences_dataset import ConcatSentencesDataset
-from .context_concat_dataset import TwoToOneDataset
+from .two_to_one_dataset import TwoToOneDataset
 from .denoising_dataset import DenoisingDataset
 from .id_dataset import IdDataset
 from .indexed_dataset import IndexedCachedDataset, IndexedDataset, IndexedRawTextDataset, MMapIndexedDataset

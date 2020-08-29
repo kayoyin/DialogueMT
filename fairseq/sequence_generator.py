@@ -163,6 +163,7 @@ class SequenceGenerator(nn.Module):
             bos_token (int, optional): beginning of sentence token
                 (default: self.eos)
         """
+        #return self._generate(utils.move_to_cuda(sample), **kwargs)
         return self._generate(sample, **kwargs)
 
     def _generate(
@@ -194,7 +195,6 @@ class SequenceGenerator(nn.Module):
             )
         else:
             raise Exception('expected src_tokens or source in net input')
-
         # bsz: total number of sentences in beam
         # Note that src_tokens may have more than 2 dimenions (i.e. audio features)
         bsz, src_len = src_tokens.size()[:2]
@@ -285,7 +285,6 @@ class SequenceGenerator(nn.Module):
                 encoder_outs = self.model.reorder_encoder_out(
                     encoder_outs, reorder_state
                 )
-
             lprobs, avg_attn_scores = self.model.forward_decoder(
                 tokens[:, : step + 1],
                 encoder_outs,
@@ -902,10 +901,10 @@ class SequenceGeneratorWithAlignment(SequenceGenerator):
                 for i in range(bsz * beam_size)
             ]
 
-        if src_tokens.device != "cpu":
-            src_tokens = src_tokens.to('cpu')
-            tgt_tokens = tgt_tokens.to('cpu')
-            attn = [i.to('cpu') for i in attn]
+        # if src_tokens.device != "cpu":
+        #     src_tokens = src_tokens.to('cpu')
+        #     tgt_tokens = tgt_tokens.to('cpu')
+        #     attn = [i.to('cpu') for i in attn]
 
         # Process the attn matrix to extract hard alignments.
         for i in range(bsz * beam_size):
