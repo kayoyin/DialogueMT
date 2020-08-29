@@ -2,18 +2,10 @@ import os, json
 import torch
 from fairseq import checkpoint_utils, data, options, tasks, utils
 from fairseq.data import TwoToOneDataset, Dictionary
+from fairseq.sequence_generator import SequenceGenerator
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import sacrebleu
-def decode(task, toks, escape_unk=False):
-    s = task.vocab.string(
-        toks.int().cpu(),
-        task.args.eval_bleu_remove_bpe,
-        unk_string=(
-            "UNKNOWNTOKENINREF" if escape_unk else "UNKNOWNTOKENINHYP"
-        ),
-    )
-    return s
 
 # Parse command-line arguments for generation
 parser = options.get_generation_parser(default_task="no_context_tag")
@@ -22,9 +14,9 @@ args = options.parse_args_and_arch(parser)
 
 # Setup task
 task = tasks.setup_task(args)
-task.load_dataset('valid')
-dataset = task.datasets['valid']
-dataloader = DataLoader(dataset, batch_size=16, collate_fn=dataset.collater, shuffle=False)
+task.load_dataset('test')
+dataset = task.datasets['test']
+dataloader = DataLoader(dataset, batch_size=32, collate_fn=dataset.collater, shuffle=False)
 
 
 # Load model

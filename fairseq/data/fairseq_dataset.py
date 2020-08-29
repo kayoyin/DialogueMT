@@ -7,6 +7,7 @@ import numpy as np
 import torch.utils.data
 
 from fairseq.data import data_utils
+TAG_DICT = {"customer": "<a>", "agent": "<b>", "<en>": "<b>", "<2en>": "<a>"}
 
 
 class EpochListening:
