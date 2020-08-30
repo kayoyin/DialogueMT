@@ -32,6 +32,7 @@ if __name__ == "__main__":
     task = tasks.setup_task(args)
     task.load_dataset('test')
     dataset = task.datasets['test']
+    task.tokenizer = dataset.dictionary.model
     dataloader = DataLoader(dataset, batch_size=1, collate_fn=dataset.collater, shuffle=False)
     dictionary = dataset.dictionary
 
@@ -50,10 +51,10 @@ if __name__ == "__main__":
     itr = task.get_batch_iterator(
         dataset=task.dataset('test'),
         max_tokens=args.max_tokens,
-        max_sentences=2,
+        max_sentences=args.max_sentences,
         max_positions=utils.resolve_max_positions(
             task.max_positions(),
-            *[model.max_positions() for model in models]
+            *[model.max_positions()]
         ),
         ignore_invalid_inputs=args.skip_invalid_size_inputs_valid_test,
         required_batch_size_multiple=args.required_batch_size_multiple,
@@ -69,25 +70,29 @@ if __name__ == "__main__":
         default_log_format=('tqdm' if not args.no_progress_bar else 'none'),
     )
 
-    generator = task.build_generator(models, args)
+    generator = task.build_generator([model], args)
     preds = []
     refs = []
     #for sample in progress:
     for sample in tqdm(itr):
+        sample = utils.move_to_cuda(sample) if use_cuda else sample
+        hyps, ref = task._inference_with_bleu(generator, sample, model, True)
+        preds += hyps
+        refs += ref
+
+    with open(args.output, 'w') as file:
+        if sample['target'] is not None:
+            file.write(f"BLEU score = {sacrebleu.corpus_bleu(preds, [refs]).score}\n")
+        for h in preds:
+            file.write(f"{h}\n")
+    raise ValueError
+    while True:    
         has_target = sample['target'] is not None
         sample = utils.move_to_cuda(sample) if use_cuda else sample
         if 'net_input' not in sample:
             continue
 
-        prefix_tokens = None
-        if args.prefix_size > 0:
-            prefix_tokens = sample['target'][:, :args.prefix_size]
-
-        constraints = None
-        if "constraints" in sample:
-            constraints = sample["constraints"]
-        
-        hypos = task.inference_step(generator, models, sample, prefix_tokens=prefix_tokens, constraints=constraints)
+        hypos = task.inference_step(generator, [model], sample)
         
         for i, sample_id in enumerate(sample['id'].tolist()):
             has_target = sample['target'] is not None
@@ -129,5 +134,6 @@ if __name__ == "__main__":
     with open(args.output, 'w') as file:
         if has_target:
             file.write(f"BLEU score = {sacrebleu.corpus_bleu(preds, [refs]).score}\n")
-        for h in preds:
-            file.write(f"{h}\n")
+        for h,r in zip(preds, refs):
+            file.write(f"P: {h}\n")
+            file.write(f"T: {r}\n")

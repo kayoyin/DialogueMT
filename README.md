@@ -21,7 +21,7 @@ pip install --editable ./
 
 ## Pre-processing
 
-A directory `DATA_PATH_DIR` should contain the files `train.json`, `valid.json`and`test.json` in the format of [WMT20 Chat Task](http://www.statmt.org/wmt20/chat-task.html).
+A directory `DATA_PATH_DIR` should contain the files `train.json`, `valid.json`and `test.json` in the format of [WMT20 Chat Task](http://www.statmt.org/wmt20/chat-task.html).
 
 Train the sentencepiece model:
 
@@ -59,9 +59,7 @@ python fairseq/eval_dialogue_trans.py DATA_PATH_DIR \
 
 which will give model predictions for `DATA_PATH_DIR/test.json` in `pred.txt`.
 
-If the test data is annotated, 
-
-
+If the test data is annotated,
 
 ## Datasets
 
@@ -69,10 +67,12 @@ TODO: Add useful stats about our dialogue datasets
 
 ## Results
 
-| | wmtchat2020 | openSubtitles/enfr |
-| --- | --- | --- |
-| 2+1 |  |  |
-| 2+2 |  |  |
+BLEU scores:
+
+|   | wmtchat2020 | openSubtitles/enfr | openSubtitles/ende | openSubtitles/enru |
+| - | - | - | - | - |
+| 2+1 |   | 41.76 (enfrbleu) | 28.72 (ende) | 20.08 (enru) |
+| 2+2 |   |   |   | |
 
 Details for each experiment (on local):
 
