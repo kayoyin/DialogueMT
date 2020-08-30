@@ -6,7 +6,7 @@ Currently supports:
 
 <a href="https://arxiv.org/pdf/1708.05943.pdf"> Neural Machine Translation with Extended Context</a>
 
-* 2+1 and 2+2 concatenation models with speaker and break tags. (2+2 still needs fixing)
+* 2+1 and 2+2 concatenation models with speaker and break tags.
 
 ## Requirements and Installation
 
@@ -63,16 +63,19 @@ If the test data is annotated,
 
 ## Datasets
 
-TODO: Add useful stats about our dialogue datasets
+|   | wmtchat2020 | openSubtitles/enfr | openSubtitles/ende | openSubtitles/enet | openSubtitles/enru |
+| - | - | - | - | - | - |
+| # turns |   | 41.76 (enfr) | 28.72 (ende) | 26.32 (enes) | 20.08 (enru) |
+| # chats |   |   |   |   |   |
 
 ## Results
 
 BLEU scores:
 
-|   | wmtchat2020 | openSubtitles/enfr | openSubtitles/ende | openSubtitles/enru |
-| - | - | - | - | - |
-| 2+1 |   | 41.76 (enfrbleu) | 28.72 (ende) | 20.08 (enru) |
-| 2+2 |   |   |   | |
+|   | wmtchat2020 | openSubtitles/enfr | openSubtitles/ende | openSubtitles/enet | openSubtitles/enru |
+| - | - | - | - | - | - |
+| 2+1 |   | 41.76 (enfr) | 28.72 (ende) | 26.32 (enes) | 20.08 (enru) |
+| 2+2 |   |   |   |   |   |
 
 Details for each experiment (on local):
 
@@ -107,4 +110,9 @@ fairseq
 fairseq_cli
 └──generate.py # make something compatible
 ```
+
+## Todo
+
+* Support beam search for inference
+* Hyperparameters tuning (?)
 

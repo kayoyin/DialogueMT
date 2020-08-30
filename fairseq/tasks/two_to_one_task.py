@@ -67,7 +67,7 @@ class TwoToOneTask(FairseqTask):
 
         # load dictionaries
         vocab = cls.load_dictionary(os.path.join(args.data, 'dict.txt'))
-        #logger.info('[{}] dictionary: {} types'.format('Src + tgt', len(vocab)))
+        logger.info('[{}] dictionary: {} types'.format('Src + tgt', len(vocab)))
         vocab.model = spm.SentencePieceProcessor(model_file=os.path.join(args.data, 'spm.model'))
 
         return cls(args, vocab)
