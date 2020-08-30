@@ -63,10 +63,12 @@ If the test data is annotated,
 
 ## Datasets
 
-|   | wmtchat2020 | openSubtitles/enfr | openSubtitles/ende | openSubtitles/enet | openSubtitles/enru |
+|       | wmtchat2020 | openSubtitles/enfr | openSubtitles/ende | openSubtitles/enet | openSubtitles/enru |
 | - | - | - | - | - | - |
-| # turns |   | 41.76 (enfr) | 28.72 (ende) | 26.32 (enes) | 20.08 (enru) |
-| # chats |   |   |   |   |   |
+| Turns | 13845/15747/17847  |246540/251458/259276 |  109241/111316/114633 | 174218/177376/182527  | 157880/161063/165949  |
+| Chats | 550/628/706  | 6997/7137/7346  | 3582/3652/3760  | 4394/4482/4614  | 23126/23588/24282  |
+| English turns | 7629/8669/9802  |  139849/142797/147637 | 55539/56572/58287  | 130598/133152/137362  |  157880/161063/165949 |
+| Other turns | 6216/7078/8045  | 106691/108661/111639  |   53702/54744/56346  | 43620/44224/45165  |133636/136346/140486 |
 
 ## Results
 
