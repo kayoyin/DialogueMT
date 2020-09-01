@@ -73,17 +73,19 @@ if __name__ == "__main__":
     generator = task.build_generator([model], args)
     preds = []
     refs = []
+    srcs = []
     #for sample in progress:
     for sample in tqdm(itr):
         sample = utils.move_to_cuda(sample) if use_cuda else sample
-        hyps, ref = task._inference_with_bleu(generator, sample, model, True)
+        src, hyps, ref = task._inference_with_bleu(generator, sample, model, True)
+        srcs += src
         preds += hyps
         refs += ref
 
     with open(args.output, 'w') as file:
-        if has_target:
-            file.write(f"BLEU score = {sacrebleu.corpus_bleu(preds, [refs]).score}\n")
-        for h,r in zip(preds, refs):
+        file.write(f"BLEU score = {sacrebleu.corpus_bleu(preds, [refs]).score}\n")
+        for s, h,r in zip(srcs, preds, refs):
+            file.write(f"S: {s}\n")
             file.write(f"P: {h}\n")
             file.write(f"T: {r}\n")
             

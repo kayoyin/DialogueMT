@@ -3,9 +3,9 @@ import numpy as np
 
 import torch
 from torch.utils.data import Dataset, DataLoader
-from .fairseq_dataset import TAG_DICT
-
+import sentencepiece as spm
 from .import FairseqDataset
+from .fairseq_dataset import TAG_DICT
 from .indexed_dataset import IndexedRawTextDataset
 from .collaters import Seq2SeqCollater
 
@@ -28,6 +28,7 @@ class TaggedDataset(IndexedRawTextDataset):
         self.size = len(self.ids)
         
         
+        
 
 
     def read_data(self, path):
@@ -38,19 +39,13 @@ class TaggedDataset(IndexedRawTextDataset):
             for turn in chat:
                 src = turn['source']
                 self.src.append(src)
-                src_tokens = self.dictionary.encode_line(
-                    src, add_if_not_exist=False,
-                    append_eos=self.append_eos, reverse_order=self.reverse_order,
-                ).long()
+                src_tokens = torch.Tensor(self.dictionary.encode(src))
                 self.src_tokens.append(src_tokens)
                 self.src_sizes.append(len(src_tokens))
 
                 tgt = turn['target']
                 self.tgt.append(tgt)
-                tgt_tokens = self.dictionary.encode_line(
-                    tgt, add_if_not_exist=False,
-                    append_eos=self.append_eos, reverse_order=self.reverse_order,
-                ).long()
+                tgt_tokens = torch.Tensor(self.dictionary.encode(tgt)).long()
                 self.tgt_tokens.append(tgt_tokens)
                 self.tgt_sizes.append(len(tgt_tokens))
 
@@ -61,11 +56,20 @@ class TaggedDataset(IndexedRawTextDataset):
         self.sizes = self.src_sizes
 
     def __getitem__(self, idx):
-        src_speaker = self.dictionary.encode_line(TAG_DICT[self.speakers[idx]], append_eos=False)
-        source, target =  torch.cat((src_speaker.long(), self.src_tokens[idx].long())) , self.tgt_tokens[idx]
+        src_speaker = torch.Tensor([self.dictionary.model.piece_to_id(TAG_DICT[self.speakers[idx]])])
+        source, target =  torch.cat((torch.Tensor([self.dictionary.bos()]).long(), src_speaker.long(), self.src_tokens[idx].long(), torch.Tensor([self.dictionary.eos()]).long())) , torch.cat((torch.Tensor([self.dictionary.bos()]).long(), self.tgt_tokens[idx].long(), torch.Tensor([self.dictionary.eos()]).long()))
         return {"id": idx, "source": source, "target": target}
 
     def collater(self, samples):
-        collate_fn = Seq2SeqCollater(pad_index=self.dictionary.pad(), eos_index=self.dictionary.eos())
-        return collate_fn.collate(samples)
+        collate_fn = Seq2SeqCollater(pad_index=self.dictionary.model.piece_to_id("<pad>"), eos_index=self.dictionary.model.piece_to_id("</s>"))
+        samples = collate_fn.collate(samples)
+        return samples
 
+if __name__ == "__main__":
+    model = spm.SentencePieceProcessor(model_file="../../../data/wmtchat2020/spm.model")
+    dataset = TwoToOneDataset("../../../data/wmtchat2020/valid.json", model)
+    sample = dataset[5]
+    print(dataset.src[5])
+    print(spm.decode(sample["source"]))
+    print(dataset.tgt[5])
+    print(spm.decode(sample["target"]))

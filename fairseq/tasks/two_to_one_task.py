@@ -199,8 +199,11 @@ class TwoToOneTask(FairseqTask):
             return s.strip()
 
         gen_out = self.inference_step(generator, [model], sample, prefix_tokens=None)
-        hyps, refs = [], []
+        srcs, hyps, refs = [], [], []
         for i in range(len(gen_out)):
+            srcs.append(decode(utils.strip_pad(sample['net_input']['src_tokens'][i], self.vocab.pad()),
+                escape_unk=True,  # don't count <unk> as matches to the hypo 
+            ))
             hyps.append(decode(gen_out[i][0]['tokens']))
             refs.append(decode(
                 utils.strip_pad(sample['target'][i], self.vocab.pad()),
@@ -212,7 +215,7 @@ class TwoToOneTask(FairseqTask):
         if self.args.eval_tokenized_bleu:
             return sacrebleu.corpus_bleu(hyps, [refs], tokenize='none')
         if return_hyps:
-            return hyps, refs
+            return srcs, hyps, refs
         else:
             return sacrebleu.corpus_bleu(hyps, [refs])
 

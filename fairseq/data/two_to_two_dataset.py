@@ -38,13 +38,13 @@ class TwoToTwoDataset(IndexedRawTextDataset):
             for turn in chat:
                 src = turn['source']
                 self.src.append(src)
-                src_tokens = torch.Tensor([self.dictionary.bos()] + self.dictionary.encode(src) + [self.dictionary.eos()]).long() 
+                src_tokens = torch.Tensor(self.dictionary.encode(src))
                 self.src_tokens.append(src_tokens)
                 self.src_sizes.append(len(src_tokens))
 
                 tgt = turn['target']
                 self.tgt.append(tgt)
-                tgt_tokens = torch.Tensor([self.dictionary.bos()] + self.dictionary.encode(tgt) + [self.dictionary.eos()]).long()
+                tgt_tokens = torch.Tensor(self.dictionary.encode(tgt))
                 self.tgt_tokens.append(tgt_tokens)
                 self.tgt_sizes.append(len(tgt_tokens))
 
@@ -58,14 +58,15 @@ class TwoToTwoDataset(IndexedRawTextDataset):
         if self.ids[idx] > 0:
             cxt_speaker = torch.Tensor([self.dictionary.model.piece_to_id(TAG_DICT[self.speakers[idx - 1]])])
             src_speaker = torch.Tensor([self.dictionary.model.piece_to_id(TAG_DICT[self.speakers[idx]])])
-            source = torch.cat((cxt_speaker.long(), self.src_tokens[idx - 1].long(), torch.Tensor([self.dictionary.brk()]).long(), src_speaker.long(), self.src_tokens[idx].long()))
-            target = torch.cat((self.tgt_tokens[idx-1].long(), torch.Tensor([self.dictionary.brk()]).long(), self.tgt_tokens[idx].long()))
+            source = torch.cat((torch.Tensor([self.dictionary.bos()]).long(), cxt_speaker.long(), self.src_tokens[idx - 1].long(), torch.Tensor([self.dictionary.brk()]).long(), src_speaker.long(), self.src_tokens[idx].long(), torch.Tensor([self.dictionary.eos()]).long()))
+            target = torch.cat((torch.Tensor([self.dictionary.bos()]).long(), self.tgt_tokens[idx-1].long(), torch.Tensor([self.dictionary.brk()]).long(), self.tgt_tokens[idx].long(), torch.Tensor([self.dictionary.eos()]).long()))
         else:
             src_speaker = torch.Tensor([self.dictionary.model.piece_to_id(TAG_DICT[self.speakers[idx]])])
-            source, target =  torch.cat((src_speaker.long(), self.src_tokens[idx].long())) , self.tgt_tokens[idx]
+            source =  torch.cat((torch.Tensor([self.dictionary.bos()]).long(), src_speaker.long(), self.src_tokens[idx].long(), torch.Tensor([self.dictionary.eos()]).long())) 
+            target = torch.cat((torch.Tensor([self.dictionary.bos()]).long(), self.tgt_tokens[idx].long(), torch.Tensor([self.dictionary.eos()]).long()))
         return {"id": idx, "source": source, "target": target}
 
     def collater(self, samples):
-        collate_fn = Seq2SeqCollater(pad_index=self.dictionary.model.piece_to_id("<pad>"), eos_index=self.dictionary.model.piece_to_id("</s>"))
+        collate_fn = Seq2SeqCollater(pad_index=self.dictionary.model.piece_to_id("<pad>"), eos_index=self.dictionary.eos())
         return collate_fn.collate(samples)
 

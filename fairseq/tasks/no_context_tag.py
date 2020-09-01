@@ -1,13 +1,16 @@
+from argparse import Namespace
+
 import os
 import torch
 import logging
-from tqdm import tqdm
-import numpy as np
+import json
 
+import numpy as np
+from tqdm import tqdm
 from fairseq import metrics, options, utils
 from fairseq.data import Dictionary, TaggedDataset
 from fairseq.tasks import FairseqTask, register_task
-
+import sentencepiece as spm
 EVAL_BLEU_ORDER = 4
 
 
@@ -15,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 @register_task('no_context_tag')
-class NoContextTagTask(FairseqTask):
+class NoContextTag(FairseqTask):
     @staticmethod
     def add_args(parser):
         # Add some command-line arguments for specifying where the data is
@@ -65,6 +68,7 @@ class NoContextTagTask(FairseqTask):
         # load dictionaries
         vocab = cls.load_dictionary(os.path.join(args.data, 'dict.txt'))
         logger.info('[{}] dictionary: {} types'.format('Src + tgt', len(vocab)))
+        vocab.model = spm.SentencePieceProcessor(model_file=os.path.join(args.data, 'spm.model'))
 
         return cls(args, vocab)
 
@@ -88,14 +92,24 @@ class NoContextTagTask(FairseqTask):
                 'to disable detokenization, e.g., when using sentencepiece)'
             )
             detok_args = json.loads(getattr(args, 'eval_bleu_detok_args', '{}') or '{}')
-            self.tokenizer = encoders.build_tokenizer(Namespace(
-                tokenizer=getattr(args, 'eval_bleu_detok', None),
-                **detok_args
-            ))
+            self.tokenizer = self.vocab.model
 
             gen_args = json.loads(getattr(args, 'eval_bleu_args', '{}') or '{}')
             self.sequence_generator = self.build_generator([model], Namespace(**gen_args))
         return model
+
+    def prepare_gen(self, model, args):
+        if getattr(args, 'eval_bleu', False):
+            assert getattr(args, 'eval_bleu_detok', None) is not None, (
+                '--eval-bleu-detok is required if using --eval-bleu; '
+                'try --eval-bleu-detok=moses (or --eval-bleu-detok=space '
+                'to disable detokenization, e.g., when using sentencepiece)'
+            )
+            detok_args = json.loads(getattr(args, 'eval_bleu_detok_args', '{}') or '{}')
+            self.tokenizer = self.vocab.model
+
+            gen_args = json.loads(getattr(args, 'eval_bleu_args', '{}') or '{}')
+            self.sequence_generator = self.build_generator([model], Namespace(**gen_args))
 
     def valid_step(self, sample, model, criterion):
         loss, sample_size, logging_output = super().valid_step(sample, model, criterion)
@@ -163,29 +177,33 @@ class NoContextTagTask(FairseqTask):
         """Return the target :class:`~fairseq.data.Dictionary`."""
         return self.vocab
 
-    def _inference_with_bleu(self, generator, sample, model):
+    def _inference_with_bleu(self, generator, sample, model, return_hyps=False):
         import sacrebleu
 
         def decode(toks, escape_unk=False):
-            s = self.vocab.string(
-                toks.int().cpu(),
-                self.args.eval_bleu_remove_bpe,
-                # The default unknown string in fairseq is `<unk>`, but
-                # this is tokenized by sacrebleu as `< unk >`, inflating
-                # BLEU scores. Instead, we use a somewhat more verbose
-                # alternative that is unlikely to appear in the real
-                # reference, but doesn't get split into multiple tokens.
-                unk_string=(
-                    "UNKNOWNTOKENINREF" if escape_unk else "UNKNOWNTOKENINHYP"
-                ),
-            )
-            if self.tokenizer:
-                s = self.tokenizer.decode(s)
-            return s
+            toks = toks.tolist()
+            #bos = task.vocab.encode("<s>")
+            #eos = task.vocab.encode("</s>")
+            bos = self.tokenizer.bos_id()
+            eos = self.tokenizer.eos_id()
+            while bos in toks:
+                toks.remove(bos)
+            while eos in toks:
+                toks.remove(eos)
+            if len(toks) == 0: 
+                return ""
+            s = self.tokenizer.decode(toks)
+            unk_string = "UNKNOWNTOKENINREF" if escape_unk else "UNKNOWNTOKENINHYP"
+            while "<unk>" in s:
+                s.replace("<unk>", unk_string)
+            return s.strip()
 
         gen_out = self.inference_step(generator, [model], sample, prefix_tokens=None)
-        hyps, refs = [], []
+        srcs, hyps, refs = [], [], []
         for i in range(len(gen_out)):
+            srcs.append(decode(utils.strip_pad(sample['net_input']['src_tokens'][i], self.vocab.pad()),
+                escape_unk=True,  # don't count <unk> as matches to the hypo 
+            ))
             hyps.append(decode(gen_out[i][0]['tokens']))
             refs.append(decode(
                 utils.strip_pad(sample['target'][i], self.vocab.pad()),
@@ -196,25 +214,36 @@ class NoContextTagTask(FairseqTask):
             logger.info('example reference: ' + refs[0])
         if self.args.eval_tokenized_bleu:
             return sacrebleu.corpus_bleu(hyps, [refs], tokenize='none')
+        if return_hyps:
+            return srcs, hyps, refs
         else:
-            logger.info(sacrebleu.corpus_bleu(hyps, [refs]))
-            return hyps, refs
+            return sacrebleu.corpus_bleu(hyps, [refs])
+
 
     def eval_with_bleu(self, model, dataloader):
         import sacrebleu
-        def decode(toks, escape_unk=False):
-            s = self.vocab.string(
-                toks.int().cpu(),
-                self.args.eval_bleu_remove_bpe,
-                unk_string=(
-                    "UNKNOWNTOKENINREF" if escape_unk else "UNKNOWNTOKENINHYP"
-                ),
-            )
-            return s
+        
+        def decode(task, toks, escape_unk=False):
+            toks = toks.tolist()
+            #bos = task.vocab.encode("<s>")
+            #eos = task.vocab.encode("</s>")
+            bos = task.vocab.model.bos_id()
+            eos = task.vocab.model.eos_id()
+            while bos in toks:
+                toks.remove(bos)
+            while eos in toks:
+                toks.remove(eos)
+            s = task.vocab.decode(
+                toks)
+            return s.strip()
+
         hyps = []
         refs = []
+        preds = torch.Tensor([self.vocab.model.bos_id()])
         for batch in tqdm(dataloader):
-            preds = model(**batch['net_input'])
+            mask_batch = batch
+            mask_batch['net_input']['prev_output_tokens'] = prev_outputs
+            preds = model(**mask_batch['net_input'])
             # print(preds[0][0].shape)
             # print(decode(task,torch.argmax(preds[0][0], dim=1)))
             # print(decode(task,
@@ -222,9 +251,10 @@ class NoContextTagTask(FairseqTask):
             #             escape_unk=True,  # don't count <unk> as matches to the hypo
             #         ))
             for i in range(preds[0].shape[0]):
-                    hyps.append(decode(torch.argmax(preds[0][i], dim=1)))
-                    refs.append(decode(utils.strip_pad(batch['target'][i], self.vocab.pad()),
-                        escape_unk=True,  # don't count <unk> as matches to the hypo
-                    ))
+                hyps.append(decode(self,torch.argmax(preds[0][i], dim=1)))
+                refs.append(decode(self,
+                    utils.strip_pad(batch['target'][i], self.vocab.pad()),
+                    escape_unk=True,  # don't count <unk> as matches to the hypo
+                ))
 
         return sacrebleu.corpus_bleu(hyps, [refs]), hyps

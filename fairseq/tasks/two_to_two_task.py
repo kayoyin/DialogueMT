@@ -177,15 +177,20 @@ class TwoToTwoTask(FairseqTask):
         """Return the target :class:`~fairseq.data.Dictionary`."""
         return self.vocab
 
-    def _inference_with_bleu(self, generator, sample, model, return_hyps=False):
+    def _inference_with_bleu(self, generator, sample, model, testing=False):
         import sacrebleu
 
-        def decode(toks, escape_unk=False):
+        def decode(toks, escape_unk=False, testing=False):
             toks = toks.tolist()
-            #bos = task.vocab.encode("<s>")
-            #eos = task.vocab.encode("</s>")
             bos = self.tokenizer.bos_id()
             eos = self.tokenizer.eos_id()
+            if testing:
+                brk = self.tokenizer.piece_to_id("<brk>")
+                try:
+                    brk_idx = toks.index(brk)
+                    toks = toks[brk_idx + 1:]
+                except:
+                    pass
             while bos in toks:
                 toks.remove(bos)
             while eos in toks:
@@ -199,20 +204,23 @@ class TwoToTwoTask(FairseqTask):
             return s.strip()
 
         gen_out = self.inference_step(generator, [model], sample, prefix_tokens=None)
-        hyps, refs = [], []
+        srcs, hyps, refs = [], [], []
         for i in range(len(gen_out)):
-            hyps.append(decode(gen_out[i][0]['tokens']))
+            srcs.append(decode(utils.strip_pad(sample['net_input']['src_tokens'][i], self.vocab.pad()),
+                escape_unk=True,  testing=testing
+            ))
+            hyps.append(decode(gen_out[i][0]['tokens'], testing=testing))
             refs.append(decode(
                 utils.strip_pad(sample['target'][i], self.vocab.pad()),
-                escape_unk=True,  # don't count <unk> as matches to the hypo
+                escape_unk=True,  testing=testing
             ))
         if self.args.eval_bleu_print_samples:
             logger.info('example hypothesis: ' + hyps[0])
             logger.info('example reference: ' + refs[0])
         if self.args.eval_tokenized_bleu:
             return sacrebleu.corpus_bleu(hyps, [refs], tokenize='none')
-        if return_hyps:
-            return hyps, refs
+        if testing:
+            return srcs, hyps, refs
         else:
             return sacrebleu.corpus_bleu(hyps, [refs])
     
