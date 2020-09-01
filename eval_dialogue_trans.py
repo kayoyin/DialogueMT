@@ -1,7 +1,7 @@
 import os, json, logging
 import torch
 from fairseq import checkpoint_utils, data, options, tasks, utils, scoring
-from fairseq.data import TwoToOneDataset, Dictionary, encoders
+from fairseq.data import Dictionary, encoders
 from fairseq.sequence_generator import SequenceGenerator
 from fairseq.logging import progress_bar
 from fairseq.logging.meters import StopwatchMeter, TimeMeter
