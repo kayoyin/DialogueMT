@@ -78,8 +78,9 @@ BLEU scores:
 
 |   | wmtchat2020 | openSubtitles/enfr | openSubtitles/ende | openSubtitles/enet | openSubtitles/enru |
 | - | - | - | - | - | - |
-| 2+1 |   | 41.76 (enfr) | 28.72 (ende) | 26.32 (enet) | 20.08 (enru) |
-| 2+2 |   |   |   |   |   |
+| Context-agnostic (Kervy)| | 46.56|30.90|27.38 | 21.49 |
+| 2+1 |   | 42.24 (enfr_2) | 28.72 (ende) | 26.48 (enet_2) | 20.08 (enru) |
+| 2+2 |   | 42.57 (enfr2_2)  |  31.07 (ende2) | 27.06 (enet2)  | 21.38 (enru2)  |
 
 Details for each experiment (on local):
 
