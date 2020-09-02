@@ -78,7 +78,7 @@ BLEU scores:
 
 |    | openSubtitles/enfr | openSubtitles/ende | openSubtitles/enet | openSubtitles/enru |
 | - | - | - | - | - |
-| Context-agnostic (Kayo)| |31.67 (ende0)| | |
+| Context-agnostic (Kayo)| 43.55(enfr_k)|31.67 (ende0)| | |
 | Context-agnostic (Kervy)| 46.56|30.90|27.38 | 21.49 |
 | 2+1 |   42.24 (enfr_2) | 28.72 (ende) | 26.48 (enet_2) | 20.20 (enru_2) |
 | 2+2 |   43.90 (enfr2_3)  |  31.07 (ende2) | 27.06 (enet2)  | 21.38 (enru2)  |
